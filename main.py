@@ -13,6 +13,7 @@ import warnings
 bsr_model_path = Path("model_bs_roformer_ep_317_sdr_12.9755.ckpt")
 audio_input_path = Path("in")
 audio_output_path = Path("out")
+audio_input_path.mkdir(exist_ok=True)
 audio_output_path.mkdir(exist_ok=True)
 
 torch.backends.cudnn.benchmark = True
@@ -61,9 +62,13 @@ bsr_model.eval()
 input_audios: list[tuple[ndarray, int | float, Path]] = []
 instruments = ["vocals"]
 
+print(f"Model loaded from {bsr_model_path}")
+print(f"Model device: {next(bsr_model.parameters()).device}")
+
 for audio_file in audio_input_path.glob("**/*.*"):
     try:
         mix, sr = librosa.load(audio_file, sr=44100, mono=False)
+        print(f"Loaded {audio_file.name} with shape {mix.shape}, duration {mix.shape[1] / sr:.2f}s")
         mix = mix.T
     except Exception as e:
         print(f"Error reading {audio_file}: {e}")

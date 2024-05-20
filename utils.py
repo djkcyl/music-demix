@@ -4,8 +4,6 @@ from tqdm import tqdm
 
 
 def bsr_demix_track(model, mix, device, overlap=2):
-    print(mix)
-    print(mix.shape)
     C = 352800
     N = overlap
     fade_size = C // 10
@@ -14,7 +12,6 @@ def bsr_demix_track(model, mix, device, overlap=2):
     batch_size = 4
 
     length_init = mix.shape[-1]
-    print(length_init)
 
     if length_init > 2 * border and (border > 0):
         mix = torch.nn.functional.pad(mix, (border, border), mode="reflect")
@@ -33,7 +30,6 @@ def bsr_demix_track(model, mix, device, overlap=2):
     with torch.cuda.amp.autocast():
         with torch.inference_mode():
             req_shape = (1,) + tuple(mix.shape)
-            print("req_shape", req_shape)
 
             result = torch.zeros(req_shape, dtype=torch.float32)
             counter = torch.zeros(req_shape, dtype=torch.float32)
@@ -80,7 +76,6 @@ def bsr_demix_track(model, mix, device, overlap=2):
 
             progress_bar.close()  # 关闭进度条
 
-            print(result)
             estimated_sources = result / counter
             estimated_sources = estimated_sources.cpu().numpy()
             numpy.nan_to_num(estimated_sources, copy=False, nan=0.0)
