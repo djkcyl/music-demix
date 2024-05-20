@@ -1,0 +1,29 @@
+[project]
+name = "bsr"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "A60", email = "cyl@cyllive.cn"},
+]
+dependencies = [
+    "torch>=2.3.0",
+    "tqdm>=4.66.4",
+    "librosa>=0.10.2",
+    "einops==0.6.1",
+    "beartype>=0.18.5",
+    "rotary-embedding-torch==0.3.5",
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.scripts]
+bsr = "python main.py"
