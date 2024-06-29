@@ -67,7 +67,7 @@ for mix, sr, audio_file in tqdm(input_audios):
         mix = numpy.stack([mix, mix], axis=-1)
     mixture = torch.tensor(mix.T, dtype=torch.float32)
     tqdm.write(f"Demixing {audio_file.name}")
-    result = bsr_demix_track(model=bsr_model, mix=mixture, device=device, overlap=2)
+    result = bsr_demix_track(model=bsr_model, mix=mixture, device=device, overlap=4)
     soundfile.write(
         audio_output_path.joinpath(f"{audio_name}_vocals.flac"),
         result.T,
@@ -86,6 +86,7 @@ for mix, sr, audio_file in tqdm(input_audios):
 
     mixture = torch.tensor(accompanied.T, dtype=torch.float32)
     separate = htdemucs_demix_track(model=htdemucs_model, mix=mixture, device=device, overlap=4)
+    separate["other"] = separate["other"] + separate["vocals"]
     for track, result in separate.items():
         if track == "vocals":
             continue
