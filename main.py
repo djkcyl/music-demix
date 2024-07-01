@@ -10,9 +10,8 @@ from numpy import ndarray  # noqa: E402
 from tqdm import tqdm  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-from utils import bsr_demix_track, htdemucs_demix_track  # noqa: E402
+from utils import bsr_demix_track# noqa: E402
 from models.bs_roformer import bsr_model  # noqa: E402
-from models.htdemucs import htdemucs_model  # noqa: E402
 
 audio_input_path = Path("in")
 audio_output_path = Path("out")
@@ -22,7 +21,6 @@ audio_output_path.mkdir(exist_ok=True)
 torch.backends.cudnn.benchmark = True
 
 bsr_model_path = Path("model_bs_roformer_ep_317_sdr_12.9755.ckpt")
-htdemucs_model_path = Path("5c90dfd2-34c22ccb.th")
 
 
 if torch.cuda.is_available():
@@ -36,11 +34,6 @@ bsr_state_dict = torch.load(bsr_model_path, map_location=device)
 bsr_model.load_state_dict(bsr_state_dict)
 bsr_model.to(device)
 bsr_model.eval()
-
-htdemucs_state_dict = torch.load(htdemucs_model_path, map_location=device)['state']
-htdemucs_model.load_state_dict(htdemucs_state_dict)
-htdemucs_model.to(device)
-htdemucs_model.eval()
 
 
 input_audios: list[tuple[ndarray, int | float, Path]] = []
@@ -61,40 +54,26 @@ if not input_audios:
     exit()
 
 
-for mix, sr, audio_file in tqdm(input_audios):
-    audio_name = audio_file.stem
-    if len(mix.shape) == 1:
-        mix = numpy.stack([mix, mix], axis=-1)
-    mixture = torch.tensor(mix.T, dtype=torch.float32)
-    tqdm.write(f"Demixing {audio_file.name}")
-    result = bsr_demix_track(model=bsr_model, mix=mixture, device=device, overlap=4)
-    soundfile.write(
-        audio_output_path.joinpath(f"{audio_name}_vocals.flac"),
-        result.T,
-        samplerate=sr,
-        subtype="PCM_24",
-    )
-    # 将vocals和原曲反相相加，得到伴奏
-    torch.cuda.empty_cache()
-    accompanied = mix - result.T
-    soundfile.write(
-        audio_output_path.joinpath(f"{audio_name}_accompaniment.flac"),
-        (mix - result.T),
-        samplerate=sr,
-        subtype="PCM_24",
-    )
-
-    mixture = torch.tensor(accompanied.T, dtype=torch.float32)
-    separate = htdemucs_demix_track(model=htdemucs_model, mix=mixture, device=device, overlap=4)
-    separate["other"] = separate["other"] + separate["vocals"]
-    for track, result in separate.items():
-        if track == "vocals":
-            continue
+def run():
+    for mix, sr, audio_file in tqdm(input_audios):
+        audio_name = audio_file.stem
+        if len(mix.shape) == 1:
+            mix = numpy.stack([mix, mix], axis=-1)
+        mixture = torch.tensor(mix.T, dtype=torch.float32)
+        tqdm.write(f"Demixing {audio_file.name}")
+        result = bsr_demix_track(model=bsr_model, mix=mixture, device=device, overlap=4).T
         soundfile.write(
-            audio_output_path.joinpath(f"{audio_name}_{track}.flac"),
-            result.T,
+            audio_output_path.joinpath(f"{audio_name}_vocals.flac"),
+            result,
             samplerate=sr,
             subtype="PCM_24",
         )
-    
-    tqdm.write(f"Demixed {audio_file.name}")
+        # 将vocals和原曲反相相加，得到伴奏
+        torch.cuda.empty_cache()
+        soundfile.write(
+            audio_output_path.joinpath(f"{audio_name}_accompaniment.flac"),
+            (mix - result),
+            samplerate=sr,
+            subtype="PCM_24",
+        )
+        tqdm.write(f"Demixed {audio_file.name}")
