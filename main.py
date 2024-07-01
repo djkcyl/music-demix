@@ -77,3 +77,10 @@ def run():
             subtype="PCM_24",
         )
         tqdm.write(f"Demixed {audio_file.name}")
+
+
+if __name__ == "__main__":
+    try:
+        run()
+    except KeyboardInterrupt:
+        print("Interrupted")
